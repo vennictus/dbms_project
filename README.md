@@ -1,4 +1,30 @@
-# Formula 1 Race Management & Performance Analytics System
+<div align="center">
+
+<pre>
+ ______ ___   ____  ____  __  __ ____    ____  ____  __  __ ____  
+|  ____/ _ \ |  _ \|  _ \|  \/  / ___|  |  _ \|  _ \|  \/  / ___| 
+| |_ | | | | | |_) | |_) | |\/| \___ \  | | | | |_) | |\/| \___ \ 
+|  _|| |_| | |  _ <|  __/| |  | |___) | | |_| |  _ <| |  | |___) |
+|_|   \___/  |_| \_\_|   |_|  |_|____/  |____/|_| \_\_|  |_|____/ 
+</pre>
+
+**Formula 1 Race Management & Performance Analytics System**
+
+[![Oracle SQL](https://img.shields.io/badge/Oracle-SQL-F80000?logo=oracle&logoColor=white)](sql/01_schema.sql)
+[![PL/SQL](https://img.shields.io/badge/PL%2FSQL-Procedures%20%7C%20Functions%20%7C%20Triggers-blue)](sql/03_plsql.sql)
+[![React](https://img.shields.io/badge/React-Dashboard-61DAFB?logo=react&logoColor=111)](src/main.jsx)
+[![DBMS](https://img.shields.io/badge/UCS310-DBMS-gold)](docs/report/final_report.md)
+[![Status](https://img.shields.io/badge/Build-Passing-brightgreen)](#frontend-execution)
+
+<p align="center">
+  <strong>Normalized Oracle schema | SQL analytics | PL/SQL automation | Race explorer | Championship timelines | React dashboard</strong>
+</p>
+
+</div>
+
+---
+
+## Overview
 
 **UCS310 - Database Management Systems**  
 **Backend-first Oracle SQL/PL-SQL project with a React visualization dashboard**
