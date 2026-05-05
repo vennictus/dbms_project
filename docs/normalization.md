@@ -16,7 +16,7 @@ Example:
 
 - One row per race result in `RESULT`
 - One row per driver lap in `LAP_DATA`
-- One row per tyre stint in `TYRE_DATA`
+- One row per tyre stint window in `TYRE_DATA`
 
 ## Second Normal Form
 
@@ -46,3 +46,4 @@ Final schema:
 The schema avoids redundancy, supports referential integrity, and keeps analytics data queryable without duplicating master data.
 
 For Ergast-based historical imports, `RESULT.TeamID` stores the constructor used by the driver in that race. This is required because drivers can change teams between seasons.
+For `TYRE_DATA`, stint windows are derived from pit-stop laps. Compound labels are demonstrative because the source pit-stop file does not provide actual tyre compound choices.

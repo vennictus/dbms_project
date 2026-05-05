@@ -48,7 +48,7 @@ The project solves this by creating a normalized Oracle database with SQL and PL
 
 Functional boundaries:
 
-- Store Formula 1 season, circuit, team, driver, race, result, lap-time, and tyre-related data.
+- Store Formula 1 season, circuit, team, driver, race, result, lap-time, and tyre-stint data.
 - Import verified 2021 and 2022 race data from an Ergast-derived dataset.
 - Support race result lookup and performance analytics.
 - Demonstrate SQL joins, aggregate queries, views, subqueries, PL/SQL, and transactions.
@@ -68,7 +68,7 @@ Modules:
 
 ## 6. Proposed System Description
 
-The system stores Formula 1 race data in a normalized Oracle database. Race, driver, constructor, circuit, and result data is imported from CSV files generated from the Ergast-derived dataset. Lap-time records are used for telemetry-inspired analytics such as best lap and average lap pace.
+The system stores Formula 1 race data in a normalized Oracle database. Race, driver, constructor, circuit, and result data is imported from CSV files generated from the Ergast-derived dataset. Lap-time records are used for telemetry-inspired analytics such as best lap and average lap pace. Tyre stint windows are derived from pit-stop laps; compound labels are demonstration values because the source pit-stop file does not include actual compound data.
 
 Key features:
 
@@ -152,7 +152,7 @@ Detailed normalization notes are available in `docs/normalization.md`.
 SQL files:
 
 - `sql/01_schema.sql` - creates tables, constraints, indexes, and views.
-- `sql/02_import_ergast_2021_2022.sql` - inserts 2021 and 2022 race data.
+- `sql/02_import_ergast_2021_2022.sql` - inserts 2021 and 2022 race, result, lap-time, and tyre-stint data.
 - `sql/04_analytics_queries.sql` - contains analytical queries.
 
 SQL concepts included:

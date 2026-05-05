@@ -55,7 +55,7 @@ CREATE TABLE race (
   track_condition VARCHAR2(30) DEFAULT 'Green' NOT NULL,
   CONSTRAINT fk_race_season FOREIGN KEY (season_id) REFERENCES season(season_id),
   CONSTRAINT fk_race_circuit FOREIGN KEY (circuit_id) REFERENCES circuit(circuit_id),
-  CONSTRAINT uq_race UNIQUE (season_id, circuit_id),
+  CONSTRAINT uq_race UNIQUE (season_id, race_name),
   CONSTRAINT chk_race_weather CHECK (weather IN ('Dry', 'Cloudy', 'Wet', 'Mixed')),
   CONSTRAINT chk_track_condition CHECK (track_condition IN ('Green', 'Rubbered', 'Damp', 'Wet'))
 );

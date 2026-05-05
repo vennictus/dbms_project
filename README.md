@@ -93,14 +93,13 @@ Implemented in `sql/05_transaction_demo.sql`:
 - Back-to-top button
 - Season switcher for 2021 and 2022
 - Race explorer with searchable Grand Prix list
-- Race detail panel with winner, pole, fastest lap, podium, full classified result
+- Race workspace with winner, pole, fastest lap, podium, result summary, and full classified result
 - Grid-to-finish delta
 - Constructor points per selected race
+- Selected-race intelligence for winner, fastest lap, grid movement, and top team haul
 - Dynamic driver standings after selected race
 - Dynamic constructor standings after selected race
 - Final championship standings
-- Win distribution chart
-- Fastest lap leaderboard
 - Story mode timeline
 - Dedicated DBMS brief page explaining backend components
 
@@ -170,6 +169,7 @@ Current generated import:
 - 44 races
 - 880 race result rows
 - 47,217 lap-time rows
+- 2,406 tyre stint rows derived from pit-stop windows
 
 ## Frontend Execution
 
@@ -195,6 +195,7 @@ npm run build
 
 - Dataset: Kaggle "Formula 1 World Championship (1950 - 2024)"
 - Original source acknowledged by that dataset: Ergast Motor Racing Data, `http://ergast.com/mrd/`
+- Tyre stint windows are derived from Ergast pit-stop laps; compound labels are demonstrative because the source pit-stop file does not provide actual compounds.
 - Narrative notes: provided Wikipedia season text file in `docs/source/`
 
 ## Group

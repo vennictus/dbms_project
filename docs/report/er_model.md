@@ -68,7 +68,7 @@
 - `RaceID` - foreign key
 - `DriverID` - foreign key
 - `StintNo`
-- `Compound`
+- `Compound` - demonstrative in the generated import because the pit-stop source does not include actual compounds
 - `StartLap`
 - `EndLap`
 

@@ -36,7 +36,7 @@
 - Primary key: `RaceID`
 - Foreign key: `SeasonID -> SEASON(SeasonID)`
 - Foreign key: `CircuitID -> CIRCUIT(CircuitID)`
-- Unique key: `(SeasonID, CircuitID)`
+- Unique key: `(SeasonID, RaceName)`
 
 ## RESULT
 

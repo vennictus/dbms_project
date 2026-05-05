@@ -2,17 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowUp,
-  BarChart3,
-  CalendarDays,
+  ChevronLeft,
   ChevronRight,
   Database,
   Flag,
   Gauge,
-  GitBranch,
   LineChart,
   Medal,
   Search,
-  ShieldCheck,
   Table2,
   Timer,
   Trophy,
@@ -23,8 +20,8 @@ import "./styles.css";
 
 const navItems = [
   ["overview", "Overview"],
-  ["races", "Race Explorer"],
-  ["analytics", "Analytics Lab"],
+  ["races", "Race Workspace"],
+  ["standings", "Standings"],
   ["story", "Story Mode"],
   ["database", "DBMS Brief"],
 ];
@@ -77,6 +74,11 @@ function posClass(pos) {
   if (pos === 2) return "silver";
   if (pos === 3) return "bronze";
   return "";
+}
+
+function isTitleDecider(year, raceName) {
+  return (year === 2021 && raceName === "Abu Dhabi Grand Prix")
+    || (year === 2022 && raceName === "Japanese Grand Prix");
 }
 
 function Stat({ icon: Icon, label, value, detail }) {
@@ -169,6 +171,93 @@ function Podium({ race }) {
   );
 }
 
+function RaceInsights({ race }) {
+  const movers = race.results
+    .filter((row) => row.grid && row.grid > 0)
+    .map((row) => ({ ...row, delta: row.grid - row.position }))
+    .sort((a, b) => b.delta - a.delta);
+  const bestMover = movers.find((row) => row.delta > 0) || movers[0];
+  const biggestDrop = [...movers].sort((a, b) => a.delta - b.delta)[0];
+  const pointsFinishers = race.results.filter((row) => row.points > 0).length;
+  const constructorHaul = Object.values(
+    race.results.reduce((acc, row) => {
+      acc[row.constructor] ??= { name: row.constructor, points: 0 };
+      acc[row.constructor].points += row.points;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b.points - a.points)[0];
+
+  const insightRows = [
+    ["Winner", race.winner?.code || "N/A", race.winner?.constructor || "Race result"],
+    ["Fastest lap", race.fastestLap ? `${race.fastestLap.code} ${lap(race.fastestLap.lapTime)}` : "N/A", race.fastestLap ? `Lap ${race.fastestLap.lap}` : "Telemetry"],
+    ["Best grid gain", bestMover ? `${bestMover.code} ${bestMover.delta > 0 ? "+" : ""}${bestMover.delta}` : "N/A", bestMover ? `${bestMover.grid} to ${bestMover.position}` : "Classified result"],
+    ["Top team haul", constructorHaul ? `${constructorHaul.name}` : "N/A", constructorHaul ? `${constructorHaul.points} pts; ${pointsFinishers} points finishers` : "Race points"],
+  ];
+
+  return (
+    <article className="panel raceInsights">
+      <div className="panelHead"><h3>Selected race intelligence</h3><Gauge size={18} /></div>
+      <div className="insightGrid">
+        {insightRows.map(([label, value, detail]) => (
+          <div key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+            <small>{detail}</small>
+          </div>
+        ))}
+      </div>
+      {biggestDrop && biggestDrop.delta < 0 && (
+        <p className="quietNote">Largest loss: {biggestDrop.code} {biggestDrop.delta} places from grid to finish.</p>
+      )}
+    </article>
+  );
+}
+
+function ResultSummary({ race }) {
+  const pointsRows = race.results.filter((row) => row.points > 0);
+  const podiumRows = race.results.filter((row) => row.position <= 3).length;
+  const outsidePoints = race.results.length - pointsRows.length;
+  const movers = race.results
+    .filter((row) => row.grid && row.grid > 0)
+    .map((row) => ({ ...row, delta: row.grid - row.position }))
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    .slice(0, 4);
+
+  return (
+    <article className="panel resultSummary">
+      <div className="panelHead"><h3>Race summary</h3><Flag size={18} /></div>
+      <div className="summaryStack">
+        <div>
+          <span>Result rows</span>
+          <strong>{race.results.length}</strong>
+          <small>Full classified race sheet</small>
+        </div>
+        <div>
+          <span>Points finishers</span>
+          <strong>{pointsRows.length}</strong>
+          <small>{pointsRows.reduce((sum, row) => sum + row.points, 0)} total points</small>
+        </div>
+      </div>
+      <div className="miniBreakdown">
+        <div><span>Podium</span><strong>{podiumRows}</strong></div>
+        <div><span>Points</span><strong>{pointsRows.length}</strong></div>
+        <div><span>No points</span><strong>{outsidePoints}</strong></div>
+      </div>
+      <div className="movementList">
+        <span>Grid movement</span>
+        {movers.map((row) => (
+          <div key={row.driverId}>
+            <strong>{row.code}</strong>
+            <em className={row.delta > 0 ? "gain" : row.delta < 0 ? "loss" : ""}>
+              {row.delta > 0 ? `+${row.delta}` : row.delta}
+            </em>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
 function RaceExplorer({ season, activeRace, setActiveRaceId, query, setQuery }) {
   const races = useMemo(() => season.races.filter((race) => {
     const text = `${race.name} ${race.circuit.name} ${race.circuit.country} ${race.winner?.driver}`.toLowerCase();
@@ -185,12 +274,20 @@ function RaceExplorer({ season, activeRace, setActiveRaceId, query, setQuery }) 
       return acc;
     }, {}),
   ).sort((a, b) => b.points - a.points).slice(0, 6), [activeRace]);
+  const activeRaceIndex = season.races.findIndex((race) => race.id === activeRace.id);
+  const previousRace = season.races[(activeRaceIndex - 1 + season.races.length) % season.races.length];
+  const nextRace = season.races[(activeRaceIndex + 1) % season.races.length];
+
+  function moveRace(direction) {
+    const target = direction === "next" ? nextRace : previousRace;
+    setActiveRaceId(target.id);
+  }
 
   return (
     <section className="raceExplorer" id="races">
       <div className="sectionTitle">
         <p className="kicker">Race Management Module</p>
-        <h2>Explore every Grand Prix</h2>
+        <h2>Race workspace</h2>
       </div>
       <div className="raceWorkbench">
         <aside className="raceIndex panel">
@@ -208,14 +305,48 @@ function RaceExplorer({ season, activeRace, setActiveRaceId, query, setQuery }) 
               </button>
             ))}
           </div>
+          <div className="raceStepper">
+            <button className="prev" type="button" onClick={() => moveRace("prev")} aria-label="Previous race">
+              <ChevronLeft size={20} />
+              <span>Previous race</span>
+              <strong>R{previousRace.round}</strong>
+              <small>{previousRace.name}</small>
+            </button>
+            <div className="raceNow" aria-live="polite">
+              <span>Selected</span>
+              <strong>Round {activeRace.round}</strong>
+              <small>{activeRace.name}</small>
+            </div>
+            <button className="next" type="button" onClick={() => moveRace("next")} aria-label="Next race">
+              <span>Next race</span>
+              <strong>R{nextRace.round}</strong>
+              <small>{nextRace.name}</small>
+              <ChevronRight size={20} />
+            </button>
+          </div>
         </aside>
-        <div className="raceDetail">
-          <article className={`raceHero panel ${activeRace.name === "Abu Dhabi Grand Prix" && season.year === 2021 ? "decider" : ""}`}>
+        <div className="workspaceFooter">
+          <ResultSummary race={activeRace} />
+          <div className="workspaceGroup" id="standings">
+            <div className="groupTitle">
+              <div>
+                <p className="kicker">After Round {activeRace.round}</p>
+                <h3>Championship state</h3>
+              </div>
+            </div>
+            <div className="snapshots inWorkspace">
+              <SnapshotBars title="Drivers after selected race" subtitle={`After ${activeRace.name}`} rows={activeRace.driverStandingsAfter} type="driver" />
+              <SnapshotBars title="Constructors after selected race" subtitle={`After ${activeRace.name}`} rows={activeRace.constructorStandingsAfter} type="constructor" />
+            </div>
+          </div>
+        </div>
+        <div className="raceContent">
+          <article className={`raceHero panel ${isTitleDecider(season.year, activeRace.name) ? "decider" : ""}`}>
             <div>
               <p className="kicker">Round {activeRace.round} · {activeRace.date}</p>
               <h2>{activeRace.name}</h2>
               <p>{activeRace.circuit.name} · {activeRace.circuit.location}, {activeRace.circuit.country}</p>
-              {activeRace.name === "Abu Dhabi Grand Prix" && season.year === 2021 && <span className="badge">Championship Decider</span>}
+              {isTitleDecider(season.year, activeRace.name) && <span className="badge">Championship Decider</span>}
             </div>
             <div className="factGrid">
               <div><span>Winner</span><strong>{activeRace.winner?.driver}</strong><small>{activeRace.winner?.constructor}</small></div>
@@ -224,10 +355,13 @@ function RaceExplorer({ season, activeRace, setActiveRaceId, query, setQuery }) 
             </div>
           </article>
           <div className="detailGrid">
+            <RaceInsights race={activeRace} />
             <article className="panel">
               <div className="panelHead"><h3>Podium</h3><Medal size={18} /></div>
               <Podium race={activeRace} />
             </article>
+          </div>
+          <div className="detailGrid balanced">
             <article className="panel">
               <div className="panelHead"><h3>Constructor points in race</h3><Users size={18} /></div>
               <div className="barList">
@@ -239,34 +373,9 @@ function RaceExplorer({ season, activeRace, setActiveRaceId, query, setQuery }) 
                 ))}
               </div>
             </article>
-          </div>
-          <div className="detailGrid wideLeft">
-            <article className="panel">
-              <div className="panelHead"><h3>Classified result</h3><Table2 size={18} /></div>
-              <div className="tableWrap">
-                <table>
-                  <thead><tr><th>Pos</th><th>Driver</th><th>Constructor</th><th>Grid</th><th>Delta</th><th>Pts</th></tr></thead>
-                  <tbody>
-                    {activeRace.results.map((r) => {
-                      const delta = r.grid === 0 || r.grid == null ? null : r.grid - r.position;
-                      return (
-                        <tr key={r.driverId}>
-                          <td><span className={`pos ${posClass(r.position)}`}>{r.position}</span></td>
-                          <td><strong>{r.code}</strong><small>{r.driver}</small></td>
-                          <td><b className="dot" style={{ "--team": teamColor(r.constructor) }} />{r.constructor}</td>
-                          <td>{r.grid ?? "PL"}</td>
-                          <td className={delta > 0 ? "gain" : delta < 0 ? "loss" : ""}>{delta == null ? "N/A" : delta > 0 ? `+${delta}` : delta}</td>
-                          <td className="points">{r.points}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </article>
             <article className="panel">
               <div className="panelHead"><h3>Lap pace ranking</h3><Timer size={18} /></div>
-              <div className="paceList">
+              <div className="paceList compact">
                 {paceRows.map((r, i) => (
                   <div key={r.driverId}>
                     <span>{i + 1}</span><strong>{r.code}</strong>
@@ -276,6 +385,29 @@ function RaceExplorer({ season, activeRace, setActiveRaceId, query, setQuery }) 
               </div>
             </article>
           </div>
+          <article className="panel">
+            <div className="panelHead"><h3>Classified result</h3><Table2 size={18} /></div>
+            <div className="tableWrap">
+              <table>
+                <thead><tr><th>Pos</th><th>Driver</th><th>Constructor</th><th>Grid</th><th>Delta</th><th>Pts</th></tr></thead>
+                <tbody>
+                  {activeRace.results.map((r) => {
+                    const delta = r.grid === 0 || r.grid == null ? null : r.grid - r.position;
+                    return (
+                      <tr key={r.driverId}>
+                        <td><span className={`pos ${posClass(r.position)}`}>{r.position}</span></td>
+                        <td><strong>{r.code}</strong><small>{r.driver}</small></td>
+                        <td><b className="dot" style={{ "--team": teamColor(r.constructor) }} />{r.constructor}</td>
+                        <td>{r.grid ?? "PL"}</td>
+                        <td className={delta > 0 ? "gain" : delta < 0 ? "loss" : ""}>{delta == null ? "N/A" : delta > 0 ? `+${delta}` : delta}</td>
+                        <td className="points">{r.points}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </article>
         </div>
       </div>
     </section>
@@ -305,50 +437,6 @@ function SnapshotBars({ title, subtitle, rows, type }) {
         ))}
       </div>
     </article>
-  );
-}
-
-function AnalyticsLab({ season }) {
-  const winners = useMemo(() => Object.values(season.races.reduce((acc, race) => {
-    const code = race.winner?.code || "N/A";
-    acc[code] ??= { code, driver: race.winner?.driver, constructor: race.winner?.constructor, wins: 0 };
-    acc[code].wins += 1;
-    return acc;
-  }, {})).sort((a, b) => b.wins - a.wins), [season.races]);
-  const maxWins = Math.max(...winners.map((w) => w.wins));
-  const fastest = useMemo(() => season.races
-    .map((race) => ({ race: race.name, ...race.fastestLap }))
-    .filter((r) => r.lapTime)
-    .sort((a, b) => a.lapTime - b.lapTime)
-    .slice(0, 8), [season.races]);
-
-  return (
-    <section id="analytics">
-      <div className="sectionTitle"><p className="kicker">Performance Analytics Module</p><h2>Analytics Lab</h2></div>
-      <div className="analyticsGrid">
-        <article className="panel">
-          <div className="panelHead"><h3>Win distribution</h3><BarChart3 size={18} /></div>
-          <div className="barList">
-            {winners.map((w) => (
-              <div key={w.code}>
-                <span>{w.code} · {w.driver}</span><strong>{w.wins}</strong>
-                <i style={{ width: `${(w.wins / maxWins) * 100}%`, background: teamColor(w.constructor) }} />
-              </div>
-            ))}
-          </div>
-        </article>
-        <article className="panel">
-          <div className="panelHead"><h3>Fastest lap board</h3><Gauge size={18} /></div>
-          <div className="fastList">
-            {fastest.map((row, index) => (
-              <div key={`${row.race}-${row.code}`}>
-                <span>{index + 1}</span><strong>{row.code}</strong><p>{lap(row.lapTime)}<small>{row.race}</small></p>
-              </div>
-            ))}
-          </div>
-        </article>
-      </div>
-    </section>
   );
 }
 
@@ -460,41 +548,45 @@ function App() {
         </div>
       </header>
       <main>
-        <section className="hero" id="overview">
-          <div>
-            <p className="kicker">Formula 1 Race Management & Performance Analytics</p>
-            <h1><span>Verstappen</span> Era Command Center</h1>
-            <p>Race control style dashboard over an Oracle SQL/PL-SQL DBMS project: standings, race results, lap pace, story mode, and backend proof in one submission interface.</p>
-            <div className="heroMeta">
-              <span>Oracle SQL</span>
-              <span>PL/SQL</span>
-              <span>Race Explorer</span>
-              <span>Telemetry Analytics</span>
+        <section className="overviewShell" id="overview">
+          <div className="hero">
+            <div>
+              <p className="kicker">Formula 1 Race Management & Performance Analytics</p>
+              <h1><span>Formula 1</span> Race Intelligence System</h1>
+              <p>Oracle SQL and PL/SQL project for race management, standings analysis, lap pace, and championship reporting, presented through a focused dashboard interface.</p>
+              <div className="heroMeta">
+                <span>Oracle SQL</span>
+                <span>PL/SQL</span>
+                <span>Race Workspace</span>
+                <span>Performance Analytics</span>
+              </div>
+            </div>
+          <div className="heroPanel summaryPanel">
+            <div className="scanline" />
+            <div className="datasetTopline">
+              <span>{year} dataset scope</span>
+              <em>{season.races.length} rounds</em>
+            </div>
+            <strong>{season.races.length} Grands Prix loaded</strong>
+            <p>{year === "2021" ? "23,688" : "23,529"} lap records, classified results, race-level constructor points, and standings snapshots after every round.</p>
+            <div className="datasetStats">
+              <div><span>Results</span><strong>{season.races.length * 20}</strong></div>
+              <div><span>Telemetry</span><strong>{year === "2021" ? "23.6k" : "23.5k"}</strong></div>
+              <div><span>Views</span><strong>2</strong></div>
             </div>
           </div>
-          <div className="heroPanel">
-            <div className="scanline" />
-            <span>{year} focus</span>
-            <strong>{year === "2021" ? "Max defeats Lewis by 8 points" : "Ferrari threatens, Red Bull takes control"}</strong>
-            <p>{season.races.length} races · {year === "2021" ? "23,688" : "23,529"} lap records · final standings loaded from championship tables</p>
           </div>
-        </section>
-
-        <section className="statsGrid">
-          <Stat icon={Trophy} label="Champion" value={max.name} detail={`${max.points} points, ${max.wins} wins`} />
-          <Stat icon={Flag} label="Main rival" value={rival.name} detail={`${rival.points} points`} />
-          <Stat icon={Gauge} label="Title margin" value={`${margin} pts`} detail={year === "2021" ? "Final championship gap" : "Final gap to Leclerc"} />
-          <Stat icon={Database} label="Backend records" value="47,217" detail="Lap-time rows across 2021-2022" />
+          <div className="statsGrid">
+            <Stat icon={Trophy} label="Champion" value={max.name} detail={`${max.points} points, ${max.wins} wins`} />
+            <Stat icon={Flag} label="Main rival" value={rival.name} detail={`${rival.points} points`} />
+            <Stat icon={Gauge} label="Title margin" value={`${margin} pts`} detail={year === "2021" ? "Final championship gap" : "Final gap to Leclerc"} />
+            <Stat icon={Database} label="Backend records" value="47,217" detail="Lap-time rows across 2021-2022" />
+          </div>
         </section>
 
         <RaceExplorer season={season} activeRace={activeRace} setActiveRaceId={setActiveRaceId} query={query} setQuery={setQuery} />
 
-        <section className="snapshots" id="snapshots">
-          <SnapshotBars title="Drivers after selected race" subtitle={`After round ${activeRace.round}`} rows={activeRace.driverStandingsAfter} type="driver" />
-          <SnapshotBars title="Constructors after selected race" subtitle={`After round ${activeRace.round}`} rows={activeRace.constructorStandingsAfter} type="constructor" />
-        </section>
-
-        <section className="standings" id="standings">
+        <section className="standings">
           <div className="sectionTitle"><p className="kicker">Championship Management</p><h2>Final standings</h2></div>
           <div className="standGrid">
             <article className="panel"><div className="panelHead"><h3>Drivers' Championship</h3><LineChart size={18} /></div><Standings rows={season.driverStandings} type="driver" /></article>
@@ -502,7 +594,6 @@ function App() {
           </div>
         </section>
 
-        <AnalyticsLab season={season} />
         <StoryMode year={year} />
         <DbmsBrief />
       </main>
